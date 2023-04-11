@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+  <h1>Delete User</h1>
+  <p>Are you sure you want to delete user '{{ user["first_name"] }} {{ user["last_name"] }}'?</p>
+  <form method="POST">
+    <input type="submit" value="Yes">
+    <a href="{{ url_for('users') }}">No</a>
+  </form>
+
+{% endblock %}
