@@ -16,7 +16,12 @@ def get_post(post_id):
         abort(404)
     return post
 
-
+# НОВЕ
+def get_users():
+    conn = get_db_connection()
+    users = conn.execute('SELECT * FROM users').fetchall()
+    conn.close()
+    return users
 
 app = Flask(__name__)
 #app.config('SECRET_KEY') = 'secret key'
@@ -82,7 +87,44 @@ def delete(id):
     flash('"{}" was successfully deleted from posts'.format(post['title']))
     return redirect(url_for('index')) # повертаємося на індекс html
 
+# НОВЕ
+@app.route('/add_user', methods=('GET', 'POST'))
+def add_user():
+    if request.method == 'POST':
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        if not first_name:
+            flash('First Name is required!')
+        elif not last_name:
+            flash('Last Name is required!')
+        else:
+            conn = get_db_connection()
+            conn.execute('INSERT INTO users (first_name, last_name) VALUES (?,?)',
+                         (first_name, last_name))
+            conn.commit()
+            conn.close()
+            flash('User added successfully!')
+            return redirect(url_for('users'))
+    return render_template('add_user.html')
 
+# НОВЕ
+@app.route('/delete_user/<int:user_id>', methods=('GET', 'POST'))
+def delete_user(user_id):
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+    if request.method == 'POST':
+        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+        conn.close()
+        flash(f'User {user["first_name"]} {user["last_name"]} has been deleted successfully!')
+        return redirect(url_for('users'))
+    return render_template('delete_user.html', user=user)
+
+# НОВЕ
+@app.route('/users')
+def users():
+    users = get_users()
+    return render_template('users.html', users=users)
 
 if __name__ == '__main__':
     app.secret_key = 'super secret key'
