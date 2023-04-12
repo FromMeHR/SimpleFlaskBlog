@@ -1,6 +1,9 @@
 import sqlite3
-from flask import Flask, render_template, request, url_for, flash, redirect
+from flask import Flask, render_template, request, url_for, flash, redirect, session
 from werkzeug.exceptions import abort
+# НОВЕ 2
+import bcrypt
+from bcrypt import hashpw, checkpw, gensalt
 
 def get_db_connection():
     connec = sqlite3.connect('database.db')
@@ -32,12 +35,22 @@ def index():
     connec = get_db_connection()
     posts = connec.execute('SELECT * FROM posts').fetchall()
     connec.close()
-    return render_template('index.html', posts=posts)
+    # return render_template('index.html', posts=posts)
+    # якщо користувач залогінений
+    if 'user_id' in session:
+        user_id = session['user_id']
+        return render_template('index.html', posts=posts, user_id=user_id, is_logged_in=True)
+    else:
+        return render_template('index.html', posts=posts, is_logged_in=False)
 
 @app.route('/<int:post_id>') 
 def post(post_id):
     post = get_post(post_id)
-    return render_template('post.html', post=post)
+    if 'user_id' in session:
+        is_logged_in = True
+    else:
+        is_logged_in = False
+    return render_template('post.html', post=post, is_logged_in=is_logged_in)
 
 @app.route('/create', methods=('GET', 'POST')) #/create - url adress. GET POST - forms
 def create():
@@ -53,7 +66,11 @@ def create():
             connec.commit()
             connec.close()
             return redirect(url_for('index'))
-    return render_template('create.html')
+    if 'user_id' in session:
+        is_logged_in = True
+    else:
+        is_logged_in = False
+    return render_template('create.html', is_logged_in=is_logged_in)
 
 @app.route('/<int:id>/edit', methods=('GET', 'POST')) # відпрацьовується роут по id
 def edit(id):
@@ -74,8 +91,11 @@ def edit(id):
             conn.commit()
             conn.close()
             return redirect(url_for('index')) # повертаємося на головну сторінку
-
-    return render_template('edit.html', post=post)
+    if 'user_id' in session:
+        is_logged_in = True
+    else:
+        is_logged_in = False
+    return render_template('edit.html', post=post, is_logged_in=is_logged_in)
 
 @app.route('/<int:id>/delete', methods=['POST'])
 def delete(id):
@@ -105,7 +125,11 @@ def add_user():
             conn.close()
             flash('User added successfully!')
             return redirect(url_for('users'))
-    return render_template('add_user.html')
+    if 'user_id' in session:
+        is_logged_in = True
+    else:
+        is_logged_in = False
+    return render_template('add_user.html', is_logged_in=is_logged_in)
 
 # НОВЕ
 @app.route('/delete_user/<int:user_id>', methods=('GET', 'POST'))
@@ -118,13 +142,55 @@ def delete_user(user_id):
         conn.close()
         flash(f'User {user["first_name"]} {user["last_name"]} has been deleted successfully!')
         return redirect(url_for('users'))
-    return render_template('delete_user.html', user=user)
+    if 'user_id' in session:
+        is_logged_in = True
+    else:
+        is_logged_in = False
+    return render_template('delete_user.html', user=user, is_logged_in=is_logged_in)
 
 # НОВЕ
 @app.route('/users')
 def users():
     users = get_users()
-    return render_template('users.html', users=users)
+    if 'user_id' in session:
+        is_logged_in = True
+    else:
+        is_logged_in = False
+    return render_template('users.html', users=users, is_logged_in=is_logged_in)
+
+# НОВЕ 2
+@app.route('/login')
+def show_login_form(): # рендеринг сторінки входу на сайт
+    if 'user_id' in session:
+        is_logged_in = True
+    else:
+        is_logged_in = False
+    return render_template('login.html', is_logged_in=is_logged_in)
+
+# НОВЕ 2
+@app.route('/login', methods=['POST'])
+def login():
+    first_name = request.form['first_name'] # Отримання введених даних
+    password = request.form['password']
+    conn = get_db_connection() # пошук користувача в базі даних
+    user = conn.execute('SELECT * FROM users WHERE first_name = ?', (first_name,)).fetchone()
+    conn.close()
+    if user and check_password(password, user['password']): # якщо пароль вірний створюємо сесію 
+        session['user_id'] = user['id']
+        return redirect(url_for('index'))
+    else:
+        error = 'Invalid username or password'  # якщо пароль невірний повідомляємо про помилку
+        return render_template('login.html', error=error)
+
+def check_password(password, hashed_password):
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password) # перевірка хеша пароля з бази даних
+
+# НОВЕ 2
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    flash('You have been logged out successfully!')
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.secret_key = 'super secret key'
