@@ -177,6 +177,8 @@ def login():
     conn.close()
     if user and check_password(password, user['password']): # якщо пароль вірний створюємо сесію 
         session['user_id'] = user['id']
+        session['first_name'] = user['first_name']
+        flash('You were successfully logged in')
         return redirect(url_for('index'))
     else:
         error = 'Invalid username or password'  # якщо пароль невірний повідомляємо про помилку
