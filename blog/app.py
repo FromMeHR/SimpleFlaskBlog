@@ -45,6 +45,9 @@ def index():
 
 @app.route('/<int:post_id>') 
 def post(post_id):
+    if 'user_id' not in session:
+        flash('You must be logged in to look a post.')
+        return redirect(url_for('index'))
     post = get_post(post_id)
     if 'user_id' in session:
         is_logged_in = True
@@ -54,7 +57,11 @@ def post(post_id):
 
 @app.route('/create', methods=('GET', 'POST')) #/create - url adress. GET POST - forms
 def create():
+    if 'user_id' not in session:
+            flash('You must be logged in to create a post.')
+            return redirect(url_for('index'))
     if request.method == 'POST':
+        user_id = session['user_id']
         title = request.form['title']
         content = request.form['content']
         if not title:
@@ -74,9 +81,12 @@ def create():
 
 @app.route('/<int:id>/edit', methods=('GET', 'POST')) # відпрацьовується роут по id
 def edit(id):
+    if 'user_id' not in session:
+            flash('You must be logged in to edit a post.')
+            return redirect(url_for('index'))
     post = get_post(id)
-
     if request.method == 'POST':
+        user_id = session['user_id']
         title = request.form['title'] # запити якщо метод GET
         content = request.form['content']
         if not title:
