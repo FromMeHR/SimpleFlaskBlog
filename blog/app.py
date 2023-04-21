@@ -12,8 +12,8 @@ def get_db_connection():
 
 def get_post(post_id):
     connec = get_db_connection()
-    post = connec.execute('SELECT * FROM posts WHERE id = ?',
-                          (post_id,)).fetchone()
+    post = connec.execute('SELECT * FROM posts WHERE id = ? AND user_id = ?',
+                          (post_id, session['user_id'])).fetchone()
     connec.close()
     if post is None:
         abort(404)
@@ -33,14 +33,14 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     connec = get_db_connection()
-    posts = connec.execute('SELECT * FROM posts').fetchall()
-    connec.close()
-    # return render_template('index.html', posts=posts)
-    # якщо користувач залогінений
     if 'user_id' in session:
         user_id = session['user_id']
+        posts = connec.execute('SELECT * FROM posts WHERE user_id = ?',
+                               (user_id,)).fetchall()
         return render_template('index.html', posts=posts, user_id=user_id, is_logged_in=True)
     else:
+        posts = connec.execute('SELECT * FROM posts').fetchall()
+        connec.close()
         return render_template('index.html', posts=posts, is_logged_in=False)
 
 @app.route('/<int:post_id>') 
@@ -68,8 +68,8 @@ def create():
             flash('Title is required!')
         else:
             connec = get_db_connection()
-            connec.execute('INSERT INTO posts (title, content) VALUES (?,?)',
-                           (title, content))
+            connec.execute('INSERT INTO posts (title, content, user_id) VALUES (?,?,?)',
+                           (title, content, user_id))
             connec.commit()
             connec.close()
             return redirect(url_for('index'))
@@ -123,14 +123,20 @@ def add_user():
     if request.method == 'POST':
         first_name = request.form['first_name']
         last_name = request.form['last_name']
+        password = request.form['password']
+        
         if not first_name:
             flash('First Name is required!')
         elif not last_name:
             flash('Last Name is required!')
+        elif not password:
+            flash('Password is required!')
+            
         else:
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             conn = get_db_connection()
-            conn.execute('INSERT INTO users (first_name, last_name) VALUES (?,?)',
-                         (first_name, last_name))
+            conn.execute('INSERT INTO users (first_name, last_name, password) VALUES (?,?,?)',
+                         (first_name, last_name, hashed_password))
             conn.commit()
             conn.close()
             flash('User added successfully!')
