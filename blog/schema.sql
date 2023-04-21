@@ -6,6 +6,8 @@ CREATE TABLE posts (
 	created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, 
 	title TEXT NOT NULL, 
 	content TEXT NOT NULL
+	user_id INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
 CREATE TABLE users (
