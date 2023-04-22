@@ -125,7 +125,12 @@ def add_user():
         last_name = request.form['last_name']
         password = request.form['password']
         
-        if not first_name:
+        conn = get_db_connection()
+        existing_user = conn.execute('SELECT * FROM users WHERE first_name = ? AND last_name = ?', (first_name, last_name,)).fetchone()
+        if existing_user:        
+            flash('User with this first name and last name is already registered.')
+            
+        elif not first_name:
             flash('First Name is required!')
         elif not last_name:
             flash('Last Name is required!')
